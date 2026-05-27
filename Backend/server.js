@@ -21,7 +21,7 @@ mongoose.connect(process.env.MONGO_URI)
 
 // ─── Middleware ───────────────────────────────────────────────────
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: process.env.CLIENT_URL || 'https://webcraftai-eight.vercel.app/',
   credentials: true,   // cookies ke liye zaroori
 }));
 
