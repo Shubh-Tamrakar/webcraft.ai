@@ -14,15 +14,28 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 5000;
 
+// ─── Render ke proxy ke liye zaroori ─────────────────────────────
+app.set('trust proxy', 1);
+
 // ─── MongoDB Connection ───────────────────────────────────────────
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('✅ MongoDB connected'))
   .catch((err) => console.error('❌ MongoDB error:', err));
 
-// ─── Middleware ───────────────────────────────────────────────────
+// ─── CORS ─────────────────────────────────────────────────────────
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://webcraftai-eight.vercel.app',
+  process.env.CLIENT_URL,
+].filter(Boolean);
+
 app.use(cors({
-  origin:'https://webcraftai-eight.vercel.app',
-  credentials: true,   // cookies ke liye zaroori
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error(`CORS blocked: ${origin}`));
+  },
+  credentials: true,
 }));
 
 app.use(express.json());
@@ -35,10 +48,10 @@ app.use(session({
   saveUninitialized: false,
   store: MongoStore.create({ mongoUrl: process.env.MONGO_URI }),
   cookie: {
-    maxAge: 1000 * 60 * 60 * 24 * 7, // 7 din
+    maxAge: 1000 * 60 * 60 * 24 * 7,
     httpOnly: true,
-    secure: true, // production me true karna (HTTPS)
-    sameSite: 'none', 
+    secure: true,       // Render HTTPS use karta hai
+    sameSite: 'none',   // Cross-domain ke liye zaroori
   }
 }));
 
@@ -55,7 +68,6 @@ const genAI = new GoogleGenerativeAI(process.env.API_KEY);
 
 // ─── Protected: Website Generate ─────────────────────────────────
 app.post('/generate', (req, res, next) => {
-  // Sirf logged-in users generate kar sakte hain
   if (!req.isAuthenticated()) {
     return res.status(401).json({ error: 'Please login to generate websites' });
   }
@@ -91,27 +103,20 @@ Rules:
 
     const response = await result.response;
     const text = response.text();
-
     const cleanedText = text.replace(/```json/gi, '').replace(/```/g, '').trim();
 
     let code;
     try {
       const firstBrace = cleanedText.indexOf('{');
       const lastBrace = cleanedText.lastIndexOf('}');
-      console.log(text);
       code = JSON.parse(cleanedText.slice(firstBrace, lastBrace + 1));
-
-      if (!code.html || !code.css || !code.js) {
-        throw new Error('Missing html/css/js fields');
-      }
+      if (!code.html || !code.css || !code.js) throw new Error('Missing html/css/js fields');
     } catch (err) {
-      console.error('JSON Parse Error:', err);
       return res.status(500).json({ error: 'Invalid JSON from AI', details: err.message });
     }
 
     res.json(code);
   } catch (error) {
-    console.error('SERVER ERROR:', error.message);
     res.status(500).json({ error: 'Failed to generate website', details: error.message });
   }
 });
