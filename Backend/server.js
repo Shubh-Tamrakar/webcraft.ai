@@ -21,7 +21,7 @@ mongoose.connect(process.env.MONGO_URI)
 
 // ─── Middleware ───────────────────────────────────────────────────
 app.use(cors({
-  origin:'https://webcraftai-eight.vercel.app/',
+  origin:'https://webcraftai-eight.vercel.app',
   credentials: true,   // cookies ke liye zaroori
 }));
 
