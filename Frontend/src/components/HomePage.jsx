@@ -8,6 +8,7 @@ const HomePage = () => {
   useEffect(() => {
     if (!canvasRef.current) return;
 
+    
     // Scene setup
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x0a0a1a);
