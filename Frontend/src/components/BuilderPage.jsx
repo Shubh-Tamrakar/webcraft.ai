@@ -22,7 +22,7 @@ const BuilderPage = () => {
     
     setLoading(true);
     try {
-      const res = await axios.post('http://localhost:5000/generate', { prompt }, { withCredentials: true });
+      const res = await axios.post('https://webcraft-ai-cx63.onrender.com', { prompt }, { withCredentials: true });
       setHtmlCode(res.data.html || '');
       setCssCode(res.data.css || '');
       setJsCode(res.data.js || '');
