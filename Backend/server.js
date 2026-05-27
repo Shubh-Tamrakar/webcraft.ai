@@ -1,111 +1,122 @@
 import express from 'express';
 import cors from 'cors';
-import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
-import { GoogleGenAI } from "@google/genai";
+import session from 'express-session';
+import passport from 'passport';
+import mongoose from 'mongoose';
+import MongoStore from 'connect-mongo';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import configurePassport from './config/passport.js';
+import authRoutes from './routes/auth.js';
 
 dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 5000;
 
-// Enhanced CORS configuration
-const corsOptions = {
-  origin: [
-    'https://astonishing-brioche-b2cfa1.netlify.app', // Your Netlify domain
-    'http://localhost:5000' // For local development
-  ],
-  methods: ['POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type'],
-  credentials: true
-};
+// ─── MongoDB Connection ───────────────────────────────────────────
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log('✅ MongoDB connected'))
+  .catch((err) => console.error('❌ MongoDB error:', err));
 
-app.use(cors(corsOptions));
-app.use(bodyParser.json());
+// ─── Middleware ───────────────────────────────────────────────────
+app.use(cors({
+  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  credentials: true,   // cookies ke liye zaroori
+}));
 
-// Initialize GoogleGenAI with API key
-const ai = new GoogleGenAI({
-  apiKey: process.env.API_KEY
-});
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
+// ─── Session ─────────────────────────────────────────────────────
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'webcraft_secret_key',
+  resave: false,
+  saveUninitialized: false,
+  store: MongoStore.create({ mongoUrl: process.env.MONGO_URI }),
+  cookie: {
+    maxAge: 1000 * 60 * 60 * 24 * 7, // 7 din
+    httpOnly: true,
+    secure: false, // production me true karna (HTTPS)
+  }
+}));
 
-// Pre-flight OPTIONS handler
-app.options('/generate', cors(corsOptions));
+// ─── Passport ────────────────────────────────────────────────────
+configurePassport(passport);
+app.use(passport.initialize());
+app.use(passport.session());
 
-app.post('/generate', async (req, res) => {
+// ─── Auth Routes ─────────────────────────────────────────────────
+app.use('/auth', authRoutes);
+
+// ─── Gemini Setup ────────────────────────────────────────────────
+const genAI = new GoogleGenerativeAI(process.env.API_KEY);
+
+// ─── Protected: Website Generate ─────────────────────────────────
+app.post('/generate', (req, res, next) => {
+  // Sirf logged-in users generate kar sakte hain
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: 'Please login to generate websites' });
+  }
+  next();
+}, async (req, res) => {
   try {
-    // Validate request
     if (!req.body?.prompt) {
       return res.status(400).json({ error: 'Prompt is required' });
     }
 
     const { prompt } = req.body;
+    console.log('PROMPT:', prompt);
 
-   
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
-    // Send generation request
-  
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: [
-        {
-          role: "user",
-          parts: [
-            {
-              text: `
-You are an expert web developer. Create a complete, functional website based on the following description: 
-"${prompt}"
+    const result = await model.generateContent(`
+You are an expert web developer.
+Create a complete responsive website for: "${prompt}"
 
-Respond ONLY with a valid JSON object with these keys:
-- html: complete HTML code
-- css: complete CSS code
-- js: complete JavaScript code
+Return ONLY valid JSON in this exact format:
+{
+  "html": "complete html code",
+  "css": "complete css code",
+  "js": "complete javascript code"
+}
 
-Requirements:
-1. The website must be fully responsive
-2. Use modern, clean design
-3. Include all necessary functionality
-4. No placeholders - use actual content
-5. No explanations or markdown formatting. Only return a raw JSON object.
-              `
-            }
-          ]
-        }
-      ]
-    });
+Rules:
+1. No markdown
+2. No triple backticks
+3. Return raw JSON only
+4. Make website modern and responsive
+`);
 
-    // Extract and clean response
-    const text = response.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    const cleanedText = text
-      .replace(/```(?:json|js|javascript)?/gi, '')
-      .replace(/```/g, '')
-      .trim();
+    const response = await result.response;
+    const text = response.text();
 
-    // Parse and validate response
+    const cleanedText = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+
     let code;
     try {
-      code = JSON.parse(cleanedText);
+      const firstBrace = cleanedText.indexOf('{');
+      const lastBrace = cleanedText.lastIndexOf('}');
+      console.log(text);
+      code = JSON.parse(cleanedText.slice(firstBrace, lastBrace + 1));
+
       if (!code.html || !code.css || !code.js) {
-        throw new Error('Missing required code fields');
+        throw new Error('Missing html/css/js fields');
       }
     } catch (err) {
-      console.error("JSON parsing failed. Raw response:\n", cleanedText);
-      return res.status(500).json({ 
-        error: 'Invalid response format from AI',
-        details: err.message
-      });
+      console.error('JSON Parse Error:', err);
+      return res.status(500).json({ error: 'Invalid JSON from AI', details: err.message });
     }
 
     res.json(code);
   } catch (error) {
-    console.error('Generation error:', error);
-    res.status(500).json({ 
-      error: 'Failed to generate website',
-      details: error.message
-    });
+    console.error('SERVER ERROR:', error.message);
+    res.status(500).json({ error: 'Failed to generate website', details: error.message });
   }
 });
 
-app.listen(port, () => {
-  console.log(`✅ Server running on port ${port}`);
-});
+// ─── Test Route ───────────────────────────────────────────────────
+app.get('/', (req, res) => res.send('Backend running 🚀'));
+
+// ─── Start ────────────────────────────────────────────────────────
+app.listen(port, () => console.log(`✅ Server running on port ${port}`));

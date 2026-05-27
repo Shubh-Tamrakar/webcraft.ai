@@ -187,7 +187,7 @@ const HomePage = () => {
                   </svg>
                 </div>
                 <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-300 via-purple-300 to-indigo-300">
-                  WebCraft
+                  WebCraft.AI
                 </h1>
               </Link>
 
@@ -200,7 +200,7 @@ const HomePage = () => {
                   Features
                 </a>
                 <a
-                  href="#contact"
+                  href="https://www.linkedin.com/in/shubh-tamrakar-3b55282a4/"
                   className="text-gray-300 hover:text-purple-300 transition-colors duration-300 px-4 py-2 font-medium"
                 >
                   Contact
@@ -587,7 +587,7 @@ const HomePage = () => {
                   </svg>
                 </div>
                 <h3 className="text-3xl sm:text-4xl font-extrabold tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-blue-300 to-purple-300">
-                  WebCraft
+                  WebCraft.AI
                 </h3>
               </div>
               <p className="text-gray-300 mb-8 max-w-md">
@@ -598,7 +598,7 @@ const HomePage = () => {
                 {[
                   {
                     name: "Twitter",
-                    url: "https://x.com/nikhil_patil27",
+                    url: "https://x.com/shubh_tamr47477",
                     icon: (
                       <svg
                         className="h-5 w-5"
@@ -611,7 +611,7 @@ const HomePage = () => {
                   },
                   {
                     name: "LinkedIn",
-                    url: "https://www.linkedin.com/in/nikhil-patil-967986251/",
+                    url: "https://www.linkedin.com/in/shubh-tamrakar-3b55282a4/",
                     icon: (
                       <svg
                         className="h-5 w-5"
@@ -624,7 +624,7 @@ const HomePage = () => {
                   },
                   {
                     name: "GitHub",
-                    url: "https://github.com/NikhilPatil2727",
+                    url: "https://github.com/Shubh-Tamrakar",
                     icon: (
                       <svg
                         className="h-5 w-5"
@@ -666,7 +666,7 @@ const HomePage = () => {
 
               <div className="border-t border-gray-700 w-full pt-8 text-center">
                 <p className="text-gray-400 text-sm">
-                  © {new Date().getFullYear()} WebCraft AI. All rights reserved.
+                  © {new Date().getFullYear()} WebCraft.AI. All rights reserved.
                 </p>
                 <div className="mt-4 flex justify-center space-x-6">
                   <a
