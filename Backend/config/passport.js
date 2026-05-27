@@ -20,6 +20,7 @@ const configurePassport = (passport) => {
     }
   ));
 
+  
   passport.serializeUser((user, done) => done(null, user.id));
 
   passport.deserializeUser(async (id, done) => {
